@@ -1,0 +1,27 @@
+services:
+  optest:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - optest_data:/data
+    networks:
+      - demo
+
+  gateway:
+    image: nginx:1.29-alpine
+    restart: unless-stopped
+    depends_on:
+      optest:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - demo
+
+volumes:
+  optest_data:
+
+networks:
+  demo:
