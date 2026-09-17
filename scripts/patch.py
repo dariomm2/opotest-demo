@@ -4,7 +4,7 @@ import argparse
 import shutil
 from pathlib import Path
 
-DEFAULT_BASE_PATH = "/optest"
+DEFAULT_BASE_PATH = "/opotest"
 
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
@@ -21,9 +21,9 @@ def sanitize_legacy_references(repo: Path) -> None:
     legacy_upper = legacy_lower.upper()
     legacy_split = "Bomb" + "Av<span>Test</span>"
     replacements = (
-        (legacy_upper, "OPTEST"),
+        (legacy_upper, "OPOTEST"),
         (legacy_display, "OpoTest"),
-        (legacy_lower, "optest"),
+        (legacy_lower, "opotest"),
         (legacy_split, "Opo<span>Test</span>"),
     )
     for path in repo.rglob("*"):
@@ -99,7 +99,7 @@ def demo_login():
     if role is None:
         return api_error("Selecciona un perfil de demo válido.", 400, "INVALID_DEMO_ROLE")
 
-    preferred_env = "OPTEST_DEMO_ADMIN_USERNAME" if role == "admin" else "OPTEST_DEMO_STUDENT_USERNAME"
+    preferred_env = "OPOTEST_DEMO_ADMIN_USERNAME" if role == "admin" else "OPOTEST_DEMO_STUDENT_USERNAME"
     preferred_username = os.environ.get(preferred_env, "").strip()
     db = get_db()
     account = None
@@ -229,8 +229,8 @@ def patch_main(path: Path, base_path: str) -> None:
     if not prefix:
         return
 
-    # Expose every backend route both at /... and at /optest/....
-    # Root routes are used behind deploy-demo's nginx, which strips /optest.
+    # Expose every backend route both at /... and at /opotest/....
+    # Root routes are used behind deploy-demo's nginx, which strips /opotest.
     # Prefixed routes are used by direct Docker/Railway deployments.
     router_block = (
         'app.include_router(auth.router)\n'
@@ -253,7 +253,7 @@ def patch_main(path: Path, base_path: str) -> None:
         f'app.include_router(statistics.router, prefix={prefix!r})\n'
         f'app.include_router(admin.router, prefix={prefix!r})\n'
         'app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")\n'
-        f'app.mount({(prefix + "/assets")!r}, StaticFiles(directory=FRONTEND_DIR / "assets"), name="optest_assets")\n'
+        f'app.mount({(prefix + "/assets")!r}, StaticFiles(directory=FRONTEND_DIR / "assets"), name="opotest_assets")\n'
     )
     text = replace_once(text, router_block, prefixed_router_block, "backend prefixed routers and assets")
 
@@ -304,7 +304,7 @@ def patch_main(path: Path, base_path: str) -> None:
     )
     text = replace_once(text, index_marker, index_aliases, "backend prefixed SPA routes")
 
-    # Security headers and API error formatting must also recognize /optest/api/.
+    # Security headers and API error formatting must also recognize /opotest/api/.
     text = replace_once(
         text,
         '    if request.url.path.startswith("/api/"):\n',
@@ -327,10 +327,10 @@ def patch_frontend_script(path: Path, base_path: str) -> None:
     count_pathname = text.count("location.pathname")
     if count_pathname < 3:
         raise RuntimeError(f"frontend pathname: esperaba >=3 coincidencias y encontré {count_pathname}.")
-    text = text.replace("location.pathname", "optestLogicalPath(location.pathname)")
+    text = text.replace("location.pathname", "opotestLogicalPath(location.pathname)")
 
     marker = "'use strict';\n" if "'use strict';\n" in text else None
-    helper = f'''\nconst OPTEST_BASE_PATH = {base_path!r};\n\nfunction optestUrl(path) {{\n  if (typeof path !== 'string' || !path.startsWith('/')) return path;\n  if (!OPTEST_BASE_PATH || OPTEST_BASE_PATH === '/') return path;\n  if (path === OPTEST_BASE_PATH || path.startsWith(`${{OPTEST_BASE_PATH}}/`)) return path;\n  return `${{OPTEST_BASE_PATH}}${{path}}`;\n}}\n\nfunction optestLogicalPath(path) {{\n  if (typeof path !== 'string') return path;\n  if (!OPTEST_BASE_PATH || OPTEST_BASE_PATH === '/') return path;\n  if (path === OPTEST_BASE_PATH || path === `${{OPTEST_BASE_PATH}}/`) return '/';\n  if (path.startsWith(`${{OPTEST_BASE_PATH}}/`)) return path.slice(OPTEST_BASE_PATH.length) || '/';\n  return path;\n}}\n\nconst optestPushState = history.pushState.bind(history);\nhistory.pushState = (state, title, url) =>\n  optestPushState(state, title, typeof url === 'string' ? optestUrl(url) : url);\nconst optestReplaceState = history.replaceState.bind(history);\nhistory.replaceState = (state, title, url) =>\n  optestReplaceState(state, title, typeof url === 'string' ? optestUrl(url) : url);\n'''
+    helper = f'''\nconst OPOTEST_BASE_PATH = {base_path!r};\n\nfunction opotestUrl(path) {{\n  if (typeof path !== 'string' || !path.startsWith('/')) return path;\n  if (!OPOTEST_BASE_PATH || OPOTEST_BASE_PATH === '/') return path;\n  if (path === OPOTEST_BASE_PATH || path.startsWith(`${{OPOTEST_BASE_PATH}}/`)) return path;\n  return `${{OPOTEST_BASE_PATH}}${{path}}`;\n}}\n\nfunction opotestLogicalPath(path) {{\n  if (typeof path !== 'string') return path;\n  if (!OPOTEST_BASE_PATH || OPOTEST_BASE_PATH === '/') return path;\n  if (path === OPOTEST_BASE_PATH || path === `${{OPOTEST_BASE_PATH}}/`) return '/';\n  if (path.startsWith(`${{OPOTEST_BASE_PATH}}/`)) return path.slice(OPOTEST_BASE_PATH.length) || '/';\n  return path;\n}}\n\nconst opotestPushState = history.pushState.bind(history);\nhistory.pushState = (state, title, url) =>\n  opotestPushState(state, title, typeof url === 'string' ? opotestUrl(url) : url);\nconst opotestReplaceState = history.replaceState.bind(history);\nhistory.replaceState = (state, title, url) =>\n  opotestReplaceState(state, title, typeof url === 'string' ? opotestUrl(url) : url);\n'''
     if marker:
         text = replace_once(text, marker, marker + helper, "frontend helper insertion")
     else:
@@ -339,19 +339,19 @@ def patch_frontend_script(path: Path, base_path: str) -> None:
     text = replace_once(
         text,
         "response = await fetch(path, requestOptions);",
-        "response = await fetch(optestUrl(path), requestOptions);",
+        "response = await fetch(opotestUrl(path), requestOptions);",
         "frontend api fetch",
     )
     text = replace_once(
         text,
         "response = await fetch(path, { method, headers, body: formData, credentials: 'same-origin' });",
-        "response = await fetch(optestUrl(path), { method, headers, body: formData, credentials: 'same-origin' });",
+        "response = await fetch(opotestUrl(path), { method, headers, body: formData, credentials: 'same-origin' });",
         "frontend form fetch",
     )
 
     # Attachment URLs come from the backend as root-relative /api/... paths.
-    text = text.replace("escapeHtml(file.download_url)", "escapeHtml(optestUrl(file.download_url))")
-    text = text.replace("escapeHtml(downloadUrl)", "escapeHtml(optestUrl(downloadUrl))")
+    text = text.replace("escapeHtml(file.download_url)", "escapeHtml(opotestUrl(file.download_url))")
+    text = text.replace("escapeHtml(downloadUrl)", "escapeHtml(opotestUrl(downloadUrl))")
 
     text = replace_once(
         text,
@@ -454,7 +454,7 @@ def patch_frontend_script(path: Path, base_path: str) -> None:
   if (view === 'review' && !state.examReview) view = 'home';
   if (view === 'admin' && state.user.role !== 'admin') {
     showToast('No tienes permisos de administrador.');
-    if (!push && optestLogicalPath(location.pathname) === '/admin') history.replaceState({}, '', '/');
+    if (!push && opotestLogicalPath(location.pathname) === '/admin') history.replaceState({}, '', '/');
     view = 'home';
   }
 '''
@@ -464,7 +464,7 @@ def patch_frontend_script(path: Path, base_path: str) -> None:
   if (!isAdmin && view === 'review' && !state.examReview) view = 'home';
   if (!isAdmin && view === 'admin') {
     showToast('No tienes permisos de administrador.');
-    if (!push && optestLogicalPath(location.pathname) === '/admin') history.replaceState({}, '', '/');
+    if (!push && opotestLogicalPath(location.pathname) === '/admin') history.replaceState({}, '', '/');
     view = 'home';
   }
 '''

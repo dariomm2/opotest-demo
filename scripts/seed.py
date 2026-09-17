@@ -35,7 +35,7 @@ from typing import Iterable, Sequence
 
 from argon2 import PasswordHasher, Type
 
-SEED_VERSION = "optest-demo-v10"
+SEED_VERSION = "opotest-demo-v14"
 DEFAULT_ANCHOR_DATE = date(2026, 8, 31)
 RANDOM_SEED = 20260831
 PASSWORD_HASHER = PasswordHasher(
@@ -406,21 +406,21 @@ def build_questions_for_topic(rng: random.Random, topic: TopicSpec) -> list[tupl
 
 def create_meta_table(conn: sqlite3.Connection) -> None:
     conn.execute(
-        "CREATE TABLE IF NOT EXISTS optest_demo_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        "CREATE TABLE IF NOT EXISTS opotest_demo_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
     )
 
 
 def current_seed_version(conn: sqlite3.Connection) -> str | None:
     create_meta_table(conn)
     row = conn.execute(
-        "SELECT value FROM optest_demo_meta WHERE key = 'seed_version'"
+        "SELECT value FROM opotest_demo_meta WHERE key = 'seed_version'"
     ).fetchone()
     return str(row[0]) if row else None
 
 
 def demo_asset_root() -> Path:
     default = Path(__file__).resolve().parent / "demo_attachments"
-    return Path(os.environ.get("OPTEST_DEMO_ASSET_ROOT", str(default)))
+    return Path(os.environ.get("OPOTEST_DEMO_ASSET_ROOT", str(default)))
 
 
 def ensure_demo_attachment_assets() -> dict[int, list[dict[str, object]]]:
@@ -996,7 +996,7 @@ def validate_seed(conn: sqlite3.Connection) -> dict[str, int | float]:
     if demo_user is None:
         raise RuntimeError("Seed inválido: falta alumno_demo.")
     user_id = int(demo_user[0])
-    anchor_row = conn.execute("SELECT value FROM optest_demo_meta WHERE key='seed_anchor_date'").fetchone()
+    anchor_row = conn.execute("SELECT value FROM opotest_demo_meta WHERE key='seed_anchor_date'").fetchone()
     validation_anchor = date.fromisoformat(anchor_row[0]) if anchor_row else DEFAULT_ANCHOR_DATE
     demo_daily = [
         row[0] for row in conn.execute(
@@ -1056,11 +1056,11 @@ def seed_database(db_path: Path, *, force: bool = False, anchor: date | None = N
             insert_daily_test_history(conn, anchor, student_ids)
             create_meta_table(conn)
             conn.execute(
-                "INSERT INTO optest_demo_meta(key, value) VALUES('seed_version', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                "INSERT INTO opotest_demo_meta(key, value) VALUES('seed_version', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (SEED_VERSION,),
             )
             conn.execute(
-                "INSERT INTO optest_demo_meta(key, value) VALUES('seed_anchor_date', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                "INSERT INTO opotest_demo_meta(key, value) VALUES('seed_anchor_date', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
                 (anchor.isoformat(),),
             )
 
@@ -1071,11 +1071,11 @@ def seed_database(db_path: Path, *, force: bool = False, anchor: date | None = N
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Genera la base realista de OpoTest Demo")
-    parser.add_argument("--db", default=os.environ.get("OPTEST_DB_PATH", "/data/app.db"))
+    parser.add_argument("--db", default=os.environ.get("OPOTEST_DB_PATH", "/data/app.db"))
     parser.add_argument("--force", action="store_true", help="Regenera aunque ya exista la versión actual")
     parser.add_argument(
         "--anchor-date",
-        default=os.environ.get("OPTEST_DEMO_SEED_DATE"),
+        default=os.environ.get("OPOTEST_DEMO_SEED_DATE"),
         help=f"Fecha de referencia YYYY-MM-DD. Por defecto {DEFAULT_ANCHOR_DATE.isoformat()} (las sesiones se desplazan a hoy).",
     )
     args = parser.parse_args()

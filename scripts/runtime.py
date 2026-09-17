@@ -18,11 +18,11 @@ from .config import SESSION_COOKIE, database_path
 from .db import connect_db
 
 
-DEMO_MODE_ENV = "OPTEST_DEMO_MODE"
-DEMO_ROOT_ENV = "OPTEST_DEMO_ROOT"
-DEMO_TTL_ENV = "OPTEST_DEMO_TTL_SECONDS"
-BASE_PATH_ENV = "OPTEST_BASE_PATH"
-DEMO_ASSET_ROOT_ENV = "OPTEST_DEMO_ASSET_ROOT"
+DEMO_MODE_ENV = "OPOTEST_DEMO_MODE"
+DEMO_ROOT_ENV = "OPOTEST_DEMO_ROOT"
+DEMO_TTL_ENV = "OPOTEST_DEMO_TTL_SECONDS"
+BASE_PATH_ENV = "OPOTEST_BASE_PATH"
+DEMO_ASSET_ROOT_ENV = "OPOTEST_DEMO_ASSET_ROOT"
 MADRID = ZoneInfo("Europe/Madrid")
 
 
@@ -31,14 +31,14 @@ def demo_mode_enabled() -> bool:
 
 
 def demo_cookie_path() -> str:
-    raw = os.environ.get(BASE_PATH_ENV, "/optest").strip()
+    raw = os.environ.get(BASE_PATH_ENV, "/opotest").strip()
     if not raw or raw == "/":
         return "/"
     return "/" + raw.strip("/")
 
 
 def _demo_root() -> Path:
-    root = Path(os.environ.get(DEMO_ROOT_ENV, "/tmp/optest-demo"))
+    root = Path(os.environ.get(DEMO_ROOT_ENV, "/tmp/opotest-demo"))
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -141,7 +141,7 @@ def _cleanup_expired() -> None:
 def _business_date_shift_days(conn: sqlite3.Connection) -> int:
     try:
         row = conn.execute(
-            "SELECT value FROM optest_demo_meta WHERE key='seed_anchor_date'"
+            "SELECT value FROM opotest_demo_meta WHERE key='seed_anchor_date'"
         ).fetchone()
     except sqlite3.OperationalError:
         return 0
@@ -202,7 +202,7 @@ def _shift_demo_business_dates(conn: sqlite3.Connection) -> None:
         pass
     try:
         conn.execute(
-            "UPDATE optest_demo_meta SET value=? WHERE key='seed_anchor_date'",
+            "UPDATE opotest_demo_meta SET value=? WHERE key='seed_anchor_date'",
             (datetime.now(MADRID).date().isoformat(),),
         )
     except sqlite3.OperationalError:

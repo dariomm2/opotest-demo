@@ -2,7 +2,7 @@
 
 Demo pública de OpoTest para preparación de oposiciones de bombero. Incluye práctica, Test del día y racha, simulacros, estadísticas y administración con datos sintéticos.
 
-La aplicación está preparada para servirse bajo `/optest/` y convivir con BRUMA, PULSO y NORTE detrás del gateway común de `deploy-demo`.
+La aplicación está preparada para servirse bajo `/opotest/` y convivir con BRUMA, PULSO y NORTE detrás del gateway común de `deploy-demo`.
 
 ## Demo
 
@@ -42,7 +42,7 @@ docker compose up --build -d
 La demo queda disponible en:
 
 ```text
-http://localhost:8000/optest/
+http://localhost:8000/opotest/
 ```
 
 Para detenerla:
@@ -67,7 +67,7 @@ El repositorio está preparado para usarse como directorio hermano de `deploy-de
 ├── bruma/
 ├── pulso/
 ├── norte/
-└── optest/
+└── opotest-demo/
 ```
 
 El servicio escucha internamente en el puerto `8000`, expone `/health` para el healthcheck y utiliza un volumen en `/data` para la SQLite base.
@@ -81,7 +81,7 @@ El mismo repositorio puede desplegarse directamente como un único servicio en R
 3. No es necesario definir `PORT`: Railway lo inyecta y el entrypoint lo utiliza automáticamente.
 4. Si quieres configurar un healthcheck en Railway, usa `/health`.
 
-Puedes abrir tanto la raíz del dominio como `/optest/`. La aplicación acepta directamente el prefijo `/optest` cuando no existe un proxy que lo retire, y sigue siendo compatible con el gateway común que sí lo retira.
+Puedes abrir tanto la raíz del dominio como `/opotest/`. La aplicación acepta directamente el prefijo `/opotest` cuando no existe un proxy que lo retire, y sigue siendo compatible con el gateway común que sí lo retira.
 
 Para esta demo pública no es obligatorio montar un volumen: el dataset se regenera de forma reproducible en cada despliegue y las modificaciones de cada visitante se realizan sobre una SQLite temporal privada. Si se desea conservar la plantilla entre reinicios, puede montarse un Railway Volume en `/data`.
 

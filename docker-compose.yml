@@ -1,9 +1,9 @@
 services:
-  optest:
+  opotest:
     build: .
     restart: unless-stopped
     volumes:
-      - optest_data:/data
+      - opotest_data:/data
     networks:
       - demo
 
@@ -11,7 +11,7 @@ services:
     image: nginx:1.29-alpine
     restart: unless-stopped
     depends_on:
-      optest:
+      opotest:
         condition: service_healthy
     ports:
       - "127.0.0.1:8000:80"
@@ -21,7 +21,7 @@ services:
       - demo
 
 volumes:
-  optest_data:
+  opotest_data:
 
 networks:
   demo:
