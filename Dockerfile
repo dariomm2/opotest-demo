@@ -18,7 +18,7 @@ FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     OPTEST_DB_PATH=/data/app.db \
-    OPTEST_VERSION=v10 \
+    OPTEST_VERSION=v13 \
     OPTEST_DEMO_MODE=1 \
     OPTEST_BASE_PATH=/optest \
     OPTEST_DEMO_ROOT=/tmp/optest-demo \
@@ -37,6 +37,6 @@ RUN mkdir -p /data /tmp/optest-demo /app/demo_attachments && chmod +x /app/entry
 
 EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)" || exit 1
+  CMD python -c "import os, urllib.request; port=os.environ.get('PORT','8000'); urllib.request.urlopen(f'http://127.0.0.1:{port}/health', timeout=3)" || exit 1
 
 ENTRYPOINT ["/app/entrypoint.sh"]

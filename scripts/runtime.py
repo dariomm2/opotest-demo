@@ -255,6 +255,9 @@ def demo_connection_for_request(http_request: Request) -> sqlite3.Connection:
         return connect_db()
 
     path = http_request.url.path
+    public_prefix = demo_cookie_path().rstrip("/")
+    if public_prefix and public_prefix != "/" and (path == public_prefix or path.startswith(public_prefix + "/")):
+        path = path[len(public_prefix):] or "/"
     raw_token = http_request.cookies.get(SESSION_COOKIE, "")
 
     if path in {"/api/login", "/api/demo-login", "/api/logout", "/health"} or not raw_token:

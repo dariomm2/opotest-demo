@@ -69,6 +69,19 @@ def patch_auth(path: Path) -> None:
     )
     text = replace_once(
         text,
+        '        if http_request.url.path.startswith("/api/") or http_request.url.path == "/health":\n',
+        '        demo_request_path = http_request.url.path\n'
+        '        demo_public_prefix = demo_cookie_path().rstrip("/")\n'
+        '        if demo_public_prefix and demo_public_prefix != "/" and (\n'
+        '            demo_request_path == demo_public_prefix\n'
+        '            or demo_request_path.startswith(demo_public_prefix + "/")\n'
+        '        ):\n'
+        '            demo_request_path = demo_request_path[len(demo_public_prefix):] or "/"\n'
+        '        if demo_request_path.startswith("/api/") or demo_request_path == "/health":\n',
+        "auth prefixed request DB trigger",
+    )
+    text = replace_once(
+        text,
         "            db = connect_db()\n            db_token = bind_db(db)\n",
         "            db = demo_connection_for_request(http_request) if demo_mode_enabled() else connect_db()\n"
         "            db_token = bind_db(db)\n",
@@ -208,6 +221,104 @@ def patch_admin(path: Path) -> None:
     )
     path.write_text(text, encoding="utf-8")
 
+
+
+def patch_main(path: Path, base_path: str) -> None:
+    text = path.read_text(encoding="utf-8")
+    prefix = "/" + base_path.strip("/") if base_path.strip("/") else ""
+    if not prefix:
+        return
+
+    # Expose every backend route both at /... and at /optest/....
+    # Root routes are used behind deploy-demo's nginx, which strips /optest.
+    # Prefixed routes are used by direct Docker/Railway deployments.
+    router_block = (
+        'app.include_router(auth.router)\n'
+        'app.include_router(practice.router)\n'
+        'app.include_router(simulations.router)\n'
+        'app.include_router(statistics.router)\n'
+        'app.include_router(admin.router)\n'
+        'app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")\n'
+    )
+    prefixed_router_block = (
+        'app.include_router(auth.router)\n'
+        'app.include_router(practice.router)\n'
+        'app.include_router(simulations.router)\n'
+        'app.include_router(statistics.router)\n'
+        'app.include_router(admin.router)\n\n'
+        '# Direct-deploy aliases. Keep the unprefixed routes above for the shared gateway.\n'
+        f'app.include_router(auth.router, prefix={prefix!r})\n'
+        f'app.include_router(practice.router, prefix={prefix!r})\n'
+        f'app.include_router(simulations.router, prefix={prefix!r})\n'
+        f'app.include_router(statistics.router, prefix={prefix!r})\n'
+        f'app.include_router(admin.router, prefix={prefix!r})\n'
+        'app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")\n'
+        f'app.mount({(prefix + "/assets")!r}, StaticFiles(directory=FRONTEND_DIR / "assets"), name="optest_assets")\n'
+    )
+    text = replace_once(text, router_block, prefixed_router_block, "backend prefixed routers and assets")
+
+    text = replace_once(
+        text,
+        '@app.get("/health", include_in_schema=False)\n',
+        f'@app.get({(prefix + "/health")!r}, include_in_schema=False)\n@app.get("/health", include_in_schema=False)\n',
+        "backend prefixed health",
+    )
+    text = replace_once(
+        text,
+        '@app.get("/version.js", include_in_schema=False)\n',
+        f'@app.get({(prefix + "/version.js")!r}, include_in_schema=False)\n@app.get("/version.js", include_in_schema=False)\n',
+        "backend prefixed version.js",
+    )
+    text = replace_once(
+        text,
+        '@app.get("/styles.css", include_in_schema=False)\n',
+        f'@app.get({(prefix + "/styles.css")!r}, include_in_schema=False)\n@app.get("/styles.css", include_in_schema=False)\n',
+        "backend prefixed styles.css",
+    )
+    text = replace_once(
+        text,
+        '@app.get("/script.js", include_in_schema=False)\n',
+        f'@app.get({(prefix + "/script.js")!r}, include_in_schema=False)\n@app.get("/script.js", include_in_schema=False)\n',
+        "backend prefixed script.js",
+    )
+
+    index_marker = (
+        '@app.get("/", include_in_schema=False)\n'
+        '@app.get("/login", include_in_schema=False)\n'
+        '@app.get("/statistics", include_in_schema=False)\n'
+        '@app.get("/questions", include_in_schema=False)\n'
+        '@app.get("/admin", include_in_schema=False)\n'
+        '@app.get("/aviso-legal", include_in_schema=False)\n'
+        '@app.get("/politica-privacidad", include_in_schema=False)\n'
+    )
+    index_aliases = (
+        f'@app.get({prefix!r}, include_in_schema=False)\n'
+        f'@app.get({(prefix + "/")!r}, include_in_schema=False)\n'
+        f'@app.get({(prefix + "/login")!r}, include_in_schema=False)\n'
+        f'@app.get({(prefix + "/statistics")!r}, include_in_schema=False)\n'
+        f'@app.get({(prefix + "/questions")!r}, include_in_schema=False)\n'
+        f'@app.get({(prefix + "/admin")!r}, include_in_schema=False)\n'
+        f'@app.get({(prefix + "/aviso-legal")!r}, include_in_schema=False)\n'
+        f'@app.get({(prefix + "/politica-privacidad")!r}, include_in_schema=False)\n'
+        + index_marker
+    )
+    text = replace_once(text, index_marker, index_aliases, "backend prefixed SPA routes")
+
+    # Security headers and API error formatting must also recognize /optest/api/.
+    text = replace_once(
+        text,
+        '    if request.url.path.startswith("/api/"):\n',
+        f'    if request.url.path.startswith("/api/") or request.url.path.startswith({(prefix + "/api/")!r}):\n',
+        "backend prefixed API security headers",
+    )
+    text = text.replace(
+        'http_request.url.path.startswith("/api/")',
+        f'(http_request.url.path.startswith("/api/") or http_request.url.path.startswith({(prefix + "/api/")!r}))',
+    )
+
+    if 'app.include_router(auth.router, prefix=' not in text:
+        raise RuntimeError("backend main: no se pudieron registrar las rutas prefijadas.")
+    path.write_text(text, encoding="utf-8")
 
 def patch_frontend_script(path: Path, base_path: str) -> None:
     text = path.read_text(encoding="utf-8")
@@ -722,6 +833,7 @@ def main() -> None:
     required = [
         app_root / "backend" / "auth.py",
         app_root / "backend" / "admin.py",
+        app_root / "backend" / "main.py",
         app_root / "frontend" / "script.js",
         app_root / "frontend" / "index.html",
         app_root / "frontend" / "styles.css",
@@ -734,6 +846,7 @@ def main() -> None:
     copy_runtime(repo, args.runtime.resolve())
     patch_auth(app_root / "backend" / "auth.py")
     patch_admin(app_root / "backend" / "admin.py")
+    patch_main(app_root / "backend" / "main.py", base_path)
     patch_frontend_script(app_root / "frontend" / "script.js", base_path)
     patch_frontend_html(app_root / "frontend" / "index.html", base_path)
     patch_frontend_styles(app_root / "frontend" / "styles.css", base_path)
